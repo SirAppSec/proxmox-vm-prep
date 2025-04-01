@@ -12,7 +12,7 @@ PREP_PACKAGES=(
     unzip zip mlocate make build-essential
     
     # Dev environments
-    docker.io docker-compose python3 python3-pip python3-venv
+    docker.io docker-compose python3 python3-pip python3-venv pipx
     nodejs npm rustc cargo
     
     # Security & Management
