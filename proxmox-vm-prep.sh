@@ -111,18 +111,37 @@ install_packages() {
     fi
 }
 install_nvm() {
-    if [ -s "$HOME/.nvm/nvm.sh" ]; then
+    # Determine the actual user's home directory
+    local USER_HOME="$(eval echo ~${SUDO_USER:-$USER})"
+    local NVM_DIR="$USER_HOME/.nvm"
+
+    if [ -s "$NVM_DIR/nvm.sh" ]; then
         echo "✔ nvm is already installed"
         return
     fi
-    
+
     read -rp "Install nvm (Node Version Manager)? [Y/n] " answer
     if [[ "${answer,,}" != "n" ]]; then
-        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
-        export NVM_DIR="$HOME/.nvm"
+        echo "Installing nvm..."
+        
+        # Install as regular user even when script is run with sudo
+        if [ "$EUID" -eq 0 ]; then
+            sudo -u ${SUDO_USER:-$USER} bash -c "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash"
+        else
+            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
+        fi
+
+        # Source nvm for current shell
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-        nvm install --lts
-        npm install -g npm@latest
+        
+        # Install Node.js LTS
+        if command -v nvm &>/dev/null; then
+            nvm install --lts
+            npm install -g npm@latest
+        else
+            echo "⚠️ nvm installation succeeded but couldn't be sourced"
+            echo "Please restart your shell or run: source $NVM_DIR/nvm.sh"
+        fi
     fi
 }
 
