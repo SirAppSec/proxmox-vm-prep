@@ -44,4 +44,9 @@ PREP_INSTALLATIONS=(
     shell_customizations security_hardening
 )
 
+### TroubleShooting
+sometimes installing from iso on proxmox would need the cd, but it's missing... use this before execution(script should install debian sources):
+```
+sudo sed -i '/^deb cdrom/s/^/#/' /etc/apt/sources.list
+sudo apt update
 ```
