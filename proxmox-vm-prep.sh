@@ -23,7 +23,7 @@ PREP_PACKAGES=(
 )
 
 PREP_INSTALLATIONS=(
-    nvm pipx docker_postinstall
+    install_nvm install_pipx docker_postinstall
     shell_customizations security_hardening
 )
 
