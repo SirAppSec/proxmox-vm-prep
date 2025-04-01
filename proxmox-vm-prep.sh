@@ -52,28 +52,64 @@ add_user_to_sudo() {
     fi
 }
 
+fix_apt_sources() {
+    # Disable cdrom repository and set up proper sources
+    echo "Configuring APT repositories..."
+
+    # Install required keyring first
+    if ! dpkg -l debian-archive-keyring >/dev/null 2>&1; then
+        echo "Installing debian-archive-keyring..."
+        sudo apt-get update -qq
+        sudo apt-get install -y debian-archive-keyring
+    fi
+
+    # Comment out CD-ROM sources
+    sudo sed -i '/^deb cdrom:/s/^/#/' /etc/apt/sources.list
+
+    # Create modern repository configuration
+    sudo tee /etc/apt/sources.list.d/debian-official.sources <<EOF
+# Debian Bookworm base repository
+Types: deb
+URIs: https://deb.debian.org/debian
+Suites: bookworm bookworm-updates bookworm-backports
+Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+# Debian Security updates
+Types: deb
+URIs: https://security.debian.org/debian-security
+Suites: bookworm-security
+Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+EOF
+
+    # Clean up legacy list files
+    sudo rm -f /etc/apt/sources.list.d/*.list
+}
+
 install_packages() {
-    echo "Updating package lists..."
-    sudo apt update -qq
+    fix_apt_sources  # This must come first
     
+    echo "Updating package lists..."
+    if ! sudo apt update -qq; then
+        echo "Failed to update package lists. Please check your network connection."
+        exit 1
+    fi
+
     local to_install=()
     for pkg in "${PREP_PACKAGES[@]}"; do
-        if dpkg -l | grep -q "^ii  ${pkg%% *} "; then
-            echo "✔ ${pkg%% *} is already installed"
-        else
+        if ! dpkg -l | grep -q "^ii  ${pkg%% *} "; then
             to_install+=("$pkg")
         fi
     done
 
     if [ ${#to_install[@]} -gt 0 ]; then
-        read -rp "Install recommended packages? [Y/n] " answer
-        if [[ "${answer,,}" != "n" ]]; then
-            sudo apt install -y "${to_install[@]}"
-            sudo updatedb  # Update mlocate database
-        fi
+        echo "Installing missing packages..."
+        sudo apt install -y "${to_install[@]}"
+    else
+        echo "All required packages are already installed."
     fi
 }
-
 install_nvm() {
     if [ -s "$HOME/.nvm/nvm.sh" ]; then
         echo "✔ nvm is already installed"
